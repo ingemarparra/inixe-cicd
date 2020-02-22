@@ -57,11 +57,11 @@ So once you got your AWS account you will have to login to the console type in t
 Once in IAM you'll cover all the steps required for a secure account.
 At the end you'll end up with something like this.
 
-![iam](docs/iam.jpg)
+![iam](docs/assets/iam.jpg)
 
 For the create __Individual IAM Users__ create an administrator user with both access types. Console and Programmatic Access, the rest of the process is the default, just hit next until you're done.
 
-![add user](docs/aws_adduser.jpg)
+![add user](docs/assets/aws_adduser.jpg)
 
 Copy your access key and secret.
 
@@ -80,11 +80,11 @@ For Github it's the same thing you'll have to create a Repository and __Personal
 The repository creation is pretty straight forward, and the __Personal Access Token__ can be created by accessing your account settings
 and selecting the __Developer Settings__ section.
 
-![github settings](docs/github_settings.jpg)
+![github settings](docs/assets/github_settings.jpg)
 
 Then you'll be able to create a __Personal Access Token__ with the following permissions.
 
-![pat permissions](docs/pat.jpg)
+![pat permissions](docs/assets/pat.jpg)
 
 Once again copy and paste the newly created token into a notepad(don't save it)
 
