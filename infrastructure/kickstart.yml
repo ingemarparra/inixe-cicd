@@ -297,6 +297,6 @@ Resources:
                 - Arn
               StackName: 
                 Ref: AWS::StackName
-              TemplatePath: 'kickstart::infrastructure/kickstart.yml'
+              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart.yml'
             InputArtifacts:
               - Name: kickstart-artifacts
