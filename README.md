@@ -35,7 +35,7 @@ We will end up with the following deliverables or artifacts.
 
 Even though we know we want and also placed a couple of constraints, there are many ways to achieve our goal, so I'm going to teach you two approaches and let you think about both of them and then choose the one you like the most.
 
-There is the [Serverless Framework Way](https://www.serverless.com) and the [Cloudformation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html) Way. Both are good approaches.
+There is the [Serverless Framework Way](https://www.serverless.com) and the [Cloudformation](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/Welcome.html) Way. Both are good approaches and I'll try to cover both of them.
 
 Other prerequisites are:
 
@@ -46,3 +46,50 @@ Other prerequisites are:
 - [AWS CLI Tools](https://aws.amazon.com/cli/)
 - [Serverless Framework](https://serverless.com/)
 - [dotnet core SDK](https://dotnet.microsoft.com/download/dotnet-core/2.1)
+
+## Let the fun begin
+
+### AWS Setup
+
+Well start with the very basics but not all the basics. What I mean is that we'll start up from scratch so what we'll need is a brand new AWS account and a brand new Github Account. I'm not going to cover the steps involved in neither of both. These are the most important assets in the tutorial.
+
+So once you got your AWS account you will have to login to the console type in the searchbox IAM.
+Once in IAM you'll cover all the steps required for a secure account.
+At the end you'll end up with something like this.
+
+![iam](docs/iam.jpg)
+
+For the create __Individual IAM Users__ create an administrator user with both access types. Console and Programmatic Access, the rest of the process is the default, just hit next until you're done.
+
+![add user](docs/aws_adduser.jpg)
+
+Copy your access key and secret.
+
+Now in a open up a terminal and type the following:
+
+```
+aws config
+```
+
+The command will ask for your access key and secret you just created. __This is the only time you'll need them.__
+It will ask you for your preferred region. In my case it was __us-east-1__.
+
+### Github setup
+
+For Github it's the same thing you'll have to create a Repository and __Personal Access Token__
+The repository creation is pretty straight forward, and the __Personal Access Token__ can be created by accessing your account settings
+and selecting the __Developer Settings__ section.
+
+![github settings](docs/github_settings.jpg)
+
+Then you'll be able to create a __Personal Access Token__ with the following permissions.
+
+![pat permissions](docs/pat.jpg)
+
+Once again copy and paste the newly created token into a notepad(don't save it)
+
+## We're all set
+
+By this point in time you'll have to choose between Cloudformation and Serverless to continue on.
+
+* [Cloudformation Journey](doc/cf.md)

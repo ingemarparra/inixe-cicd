@@ -1,0 +1,302 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A Kickstart Template
+Parameters:
+  AWSAccountOwnerNameParameter:
+    Description: The github repo name
+    Type: String
+    Default: <your-name>
+
+  PersonalAccessTokenParameter:
+    Description: The github personal Access Token
+    Type: String
+    NoEcho: true
+    Default: None
+
+  ArtifactsBucketParameter:
+    Description: The Cloudformation Bucket for artifacts
+    Type: String
+    Default: <your-name>-cicd-artifacts
+
+  RepositoryOwnerParameter:
+    Description: The github account
+    Type: String
+    Default: <your-github-account>
+
+  RepositoryNameParameter:
+    Description: The github repo name
+    Type: String
+    Default: <your-github-repository>
+
+Resources:
+  TutorialArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 
+        Ref: ArtifactsBucketParameter
+
+  # This is a Control Policy that will let all your future roles do anything but create new users
+  MainRoleBoundaryPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: MainRoleBoundaryPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: '*'
+            Resource: '*'
+          - Effect: Deny
+            Action:
+            - iam:CreateUser
+            - iam:CreateRole
+            - iam:CreatePolicy
+            - iam:DeleteUser
+            - iam:DeleteRole
+            - iam:DeletePolicy
+            - iam:AttachRolePolicy  
+            - iam:ChangePassword
+            - iam:AttachUserPolicy
+            - iam:AttachGroupPolicy
+            - iam:AddUserToGroup
+            - iam:DeleteAccessKey
+            - iam:PutRolePolicy
+            - iam:PutUserPolicy
+            - iam:UpdateRole
+            - iam:UpdateUser
+            Resource: '*'
+  
+  CodePipelinePolicy:
+    DependsOn: TutorialArtifactsBucket
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: CodePipelinePolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            - s3:GetObject
+            Resource:
+              Fn::Join:
+                - ''
+                -
+                  - 'arn:aws:s3:::'
+                  - Ref: ArtifactsBucketParameter
+                  - /*
+
+  CloudFormationPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: MainRoleBoundaryPolicy
+    Properties:
+      ManagedPolicyName: CloudFormationPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+            - iam:CreateRole
+            Resource: '*'
+            Condition:
+              StringLike:
+                'iam:PermissionsBoundary': 
+                  Ref: MainRoleBoundaryPolicy
+
+  CloudFormationRole:
+    DependsOn: CloudFormationPolicy
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CloudFormationRole
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      - Ref: CloudFormationPolicy
+
+  CodePipelineRole:
+    DependsOn: CodePipelinePolicy
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodePipelineRole
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+      - Ref: CodePipelinePolicy
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: CodeBuildRole
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+
+  #Now your secret will be safe
+  PersonalAccessTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: The Github Personal Access Token
+      # A good naming strategy will be very good
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - github
+      SecretString: 
+        Ref: PersonalAccessTokenParameter
+  
+  ArtifactsBucketStoredParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The Cloudformation Bucket for artifacts
+      Type: String
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - resource
+                  - artifact-bucket
+      Value:
+        Ref: ArtifactsBucketParameter
+
+  RepositoryOwnerStoredParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The github account
+      Type: String
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - parameter
+                  - github-owner
+      Value:
+        Ref: RepositoryOwnerParameter
+
+  RepositoryNameStoredParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The github repo name
+      Type: String
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - parameter
+                  - github-repo
+      Value:
+          Ref: RepositoryNameParameter
+
+  KickstartPipeline:
+    DependsOn: 
+    - TutorialArtifactsBucket
+    - CodePipelineRole
+    - CloudFormationRole
+    Type: AWS::CodePipeline::Pipeline
+    Properties: 
+      ArtifactStore: 
+        Location:
+          Ref: ArtifactsBucketParameter
+        Type: S3
+      Name:
+        Fn::Join:
+          - '-'
+          -
+            - Ref: AWSAccountOwnerNameParameter
+            - kickstart
+            - pipeline
+      RoleArn:
+        Fn::GetAtt:
+        - CodePipelineRole
+        - Arn
+      Stages: 
+        - Name: Source
+          Actions:
+          - Name: Get-Source
+            ActionTypeId:
+              Category: Source
+              Owner: ThirdParty
+              Version: '1'
+              Provider: GitHub
+            Configuration:
+              Owner:
+                Ref: RepositoryOwnerParameter
+              Repo:
+                Ref: RepositoryNameParameter
+              Branch: develop
+              OAuthToken:
+                  Ref: PersonalAccessTokenParameter
+              PollForSourceChanges: false
+            OutputArtifacts:
+              - Name: kickstart-artifacts
+            RunOrder: 1
+        - Name: Deploy
+          Actions:
+          - Name: Deploy-Kickstart
+            RunOrder: 1
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Version: '1'
+              Provider: CloudFormation
+            Configuration:
+              ActionMode: CREATE_UPDATE
+              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+              ChangeSetName: kickstart-changeset
+              RoleArn:
+                Fn::GetAtt:
+                - CloudFormationRole
+                - Arn
+              StackName: 
+                Ref: AWS::StackName
+              TemplatePath: 'kickstart::infrastructure/kickstart.yml'
+            InputArtifacts:
+              - Name: kickstart-artifacts
