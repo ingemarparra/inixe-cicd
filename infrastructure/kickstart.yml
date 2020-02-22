@@ -248,11 +248,45 @@ Resources:
       Value:
           Ref: RepositoryNameParameter
 
+  AWSAccountOwnerNameStoredParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The AWS Account Owner Name
+      Type: String
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - parameter
+                  - aws-owner-name
+      Value:
+          Ref: AWSAccountOwnerNameParameter
+
+  IsDeployedStoredParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The AWS Account Owner Name
+      Type: String
+      Name: /cloudformation/kickstart
+      Value: yes
+
   KickstartPipeline:
-    DependsOn: 
+    DependsOn:
     - TutorialArtifactsBucket
     - CodePipelineRole
     - CloudFormationRole
+    - PersonalAccessTokenSecret
+    - ArtifactsBucketStoredParameter
+    - RepositoryOwnerStoredParameter
+    - RepositoryNameStoredParameter
+    - AWSAccountOwnerNameStoredParameter
+    - IsDeployedStoredParameter
     Type: AWS::CodePipeline::Pipeline
     Properties: 
       ArtifactStore: 
@@ -311,5 +345,25 @@ Resources:
               StackName: 
                 Ref: AWS::StackName
               TemplatePath: 'kickstart-artifacts::infrastructure/kickstart.yml'
+              ParameterOverrides:
+                Fn::Sub:
+                - |
+                  {
+                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
+                    "PersonalAccessTokenParameter" : "${PersonalAccessToken}",
+                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
+                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
+                    "RepositoryNameParameter" : "${RepositoryName}"
+                  }
+                - AWSAccountOwnerName:
+                    Ref: AWSAccountOwnerNameParameter
+                  PersonalAccessToken:
+                    Ref: PersonalAccessTokenParameter
+                  ArtifactsBucket:
+                    Ref: ArtifactsBucketParameter
+                  RepositoryOwner:
+                    Ref: RepositoryOwnerParameter
+                  RepositoryName:
+                    Ref: RepositoryNameParameter
             InputArtifacts:
               - Name: kickstart-artifacts
