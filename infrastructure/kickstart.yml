@@ -77,6 +77,10 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
+            - cloudformation:UpdateStack
+            Resource: '*'
+          - Effect: Allow
+            Action:
             - iam:PassRole
             Resource:
               Fn::GetAtt:
@@ -283,7 +287,7 @@ Resources:
               Branch: develop
               OAuthToken:
                   Ref: PersonalAccessTokenParameter
-              PollForSourceChanges: false
+              PollForSourceChanges: true
             OutputArtifacts:
               - Name: kickstart-artifacts
             RunOrder: 1
