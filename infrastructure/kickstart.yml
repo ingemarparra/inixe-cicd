@@ -6,10 +6,10 @@ Parameters:
     Type: String
     Default: <your-name>
 
-  PersonalAccessTokenParameter:
+  PersonalAccessTokenNameParameter:
     Description: The github personal Access Token
     Type: String
-    NoEcho: true
+#    NoEcho: true
     Default: None
 
   ArtifactsBucketParameter:
@@ -31,17 +31,22 @@ Parameters:
 #    Description: The github repo name
 #    Type: String
 #    Default: /cloudformation/kickstart
-#
+
+#  PersonalAccessTokenSSMParameter:
+#    Description: The github personal Access Token
+#    Type: 'AWS::SSM::Parameter::Value<String>'
+#    Default: /cloudformation/kickstart
+
 #  ArtifactsBucketSSMParameter:
 #    Description: The Cloudformation Bucket for artifacts
 #    Type: 'AWS::SSM::Parameter::Value<String>'
 #    Default: /cloudformation/kickstart
-#
+
 #  RepositoryOwnerSSMParameter:
 #    Description: The github account
 #    Type: 'AWS::SSM::Parameter::Value<String>'
 #    Default: /cloudformation/kickstart
-#
+
 #  RepositoryNameSSMParameter:
 #    Description: The github repo name
 #    Type: 'AWS::SSM::Parameter::Value<String>'
@@ -202,25 +207,24 @@ Resources:
       - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
 
   #Now your secret will be safe
-  PersonalAccessTokenSecret:
-    Type: AWS::SecretsManager::Secret
-    Properties:
-      Description: The Github Personal Access Token
-      # A good naming strategy will be very good
-      Name:
-        Fn::Join:
-          - ''
-          -
-            - /
-            - Fn::Join: 
-                - '/'
-                - 
-                  - Ref: AWSAccountOwnerNameParameter
-                  - global
-                  - github
-      SecretString: 
-        Ref: PersonalAccessTokenParameter
-  
+#  PersonalAccessTokenSecret:
+#    Type: AWS::SecretsManager::Secret
+#    Properties:
+#      Description: The Github Personal Access Token
+#      Name: 
+#        Fn::Join:
+#          - ''
+#          -
+#            - /
+#            - Fn::Join: 
+#                - '/'
+#                - 
+#                  - Ref: AWSAccountOwnerNameParameter
+#                  - global
+#                  - github
+#      SecretString:
+#        Ref: PersonalAccessTokenNameParameter
+
   ArtifactsBucketStoredParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -239,7 +243,7 @@ Resources:
                   - resource
                   - artifact-bucket
       Value:
-        Ref: ArtifactsBucketParameter
+        Ref: AWSAccountOwnerNameParameter
 
   RepositoryOwnerStoredParameter:
     Type: AWS::SSM::Parameter
@@ -314,12 +318,12 @@ Resources:
     - TutorialArtifactsBucket
     - CodePipelineRole
     - CloudFormationRole
-    - PersonalAccessTokenSecret
+#    - PersonalAccessTokenSecret
     - ArtifactsBucketStoredParameter
     - RepositoryOwnerStoredParameter
     - RepositoryNameStoredParameter
     - AWSAccountOwnerNameStoredParameter
-    - IsDeployedStoredParameter
+#    - IsDeployedStoredParameter
     Type: AWS::CodePipeline::Pipeline
     Properties: 
       ArtifactStore: 
@@ -353,7 +357,12 @@ Resources:
                 Ref: RepositoryNameParameter
               Branch: develop
               OAuthToken:
-                  Ref: PersonalAccessTokenParameter
+                Fn::Join:
+                  - ''
+                  - 
+                    - '{{resolve:secretsmanager:'
+                    - Ref: PersonalAccessTokenNameParameter
+                    - ':SecretString:Token}}'
               PollForSourceChanges: true
             OutputArtifacts:
               - Name: kickstart-artifacts
@@ -378,64 +387,54 @@ Resources:
               StackName: 
                 Ref: AWS::StackName
               TemplatePath: 'kickstart-artifacts::infrastructure/kickstart.yml'
-              #TemplateConfiguration: 'kickstart-artifacts::infrastructure/kickstart-configuration.json'
               ParameterOverrides:
 #                Fn::Sub:
 #                - |
 #                  {
 #                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
-#                    "PersonalAccessTokenParameter" : "${PersonalAccessToken}",
+#                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
 #                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
 #                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
 #                    "RepositoryNameParameter" : "${RepositoryName}",
 #                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerNameSSM}",
 #                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucketSSM}",
 #                    "RepositoryOwnerSSMParameter" : "${RepositoryOwnerSSM}",
-#                    "RepositoryNameSSMParameter" : "${RepositoryNameSSM}"
+#                    "RepositoryNameSSMParameter" : "${RepositoryNameSSM}",
+#                    "PersonalAccessTokenSSMParameter": "${PersonalAccessTokenSSM}"
 #                  }
                 Fn::Sub:
                 - |
                   {
                     "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
-                    "PersonalAccessTokenParameter" : "${PersonalAccessToken}",
                     "ArtifactsBucketParameter" : "${ArtifactsBucket}",
                     "RepositoryOwnerParameter" : "${RepositoryOwner}",
+                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
                     "RepositoryNameParameter" : "${RepositoryName}"
                   }
                 - AWSAccountOwnerName:
                     Ref: AWSAccountOwnerNameParameter
-                  PersonalAccessToken:
-                    Ref: PersonalAccessTokenParameter
                   ArtifactsBucket:
                     Ref: ArtifactsBucketParameter
                   RepositoryOwner:
                     Ref: RepositoryOwnerParameter
                   RepositoryName:
                     Ref: RepositoryNameParameter
-                  #AWSAccountOwnerNameSSM:
-                  #  Ref: AWSAccountOwnerNameStoredParameter
-                  #ArtifactsBucketSSM:
-                  #  Ref: ArtifactsBucketStoredParameter
-                  #RepositoryOwnerSSM:
-                  #  Ref: RepositoryOwnerStoredParameter
-                  #RepositoryNameSSM:
-                  #  Ref: RepositoryNameStoredParameter
+                  PersonalAccessToken:
+                    Ref: PersonalAccessTokenNameParameter
+#                  AWSAccountOwnerNameSSM:
+#                    Ref: AWSAccountOwnerNameStoredParameter
+#                  ArtifactsBucketSSM:
+#                    Ref: ArtifactsBucketStoredParameter
+#                  RepositoryOwnerSSM:
+#                    Ref: RepositoryOwnerStoredParameter
+#                  RepositoryNameSSM:
+#                    Ref: RepositoryNameStoredParameter
+#                  PersonalAccessTokenSSM:
+#                    Fn::Join:
+#                      - ''
+#                      -
+#                        - /aws/reference/secretsmanager//
+#                        - Ref: AWSAccountOwnerNameParameter
+#                        - /global/github
             InputArtifacts:
               - Name: kickstart-artifacts
-Outputs:
-  AWSAccountOwnerNameStoredParameterPath:
-    Description: The generated path for AWS Account Owner Name parameter
-    Value:
-      Ref: AWSAccountOwnerNameStoredParameter
-  RepositoryNameStoredParameterPath:
-    Description: The generated path for Repository Name parameter
-    Value:
-      Ref: RepositoryNameStoredParameter
-  RepositoryOwnerStoredParameterPath:
-    Description: The generated path for Repository Owner parameter
-    Value:
-      Ref: RepositoryOwnerStoredParameter
-  ArtifactsBucketStoredParameterPath:
-    Description: The generated path for Artifacts Bucket parameter
-    Value:
-      Ref: ArtifactsBucketStoredParameter
