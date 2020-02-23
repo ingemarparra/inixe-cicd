@@ -27,6 +27,26 @@ Parameters:
     Type: String
     Default: <your-github-repository>
 
+#  AWSAccountOwnerNameSSMParameter:
+#    Description: The github repo name
+#    Type: String
+#    Default: /cloudformation/kickstart
+#
+#  ArtifactsBucketSSMParameter:
+#    Description: The Cloudformation Bucket for artifacts
+#    Type: 'AWS::SSM::Parameter::Value<String>'
+#    Default: /cloudformation/kickstart
+#
+#  RepositoryOwnerSSMParameter:
+#    Description: The github account
+#    Type: 'AWS::SSM::Parameter::Value<String>'
+#    Default: /cloudformation/kickstart
+#
+#  RepositoryNameSSMParameter:
+#    Description: The github repo name
+#    Type: 'AWS::SSM::Parameter::Value<String>'
+#    Default: /cloudformation/kickstart
+
 Resources:
   TutorialArtifactsBucket:
     Type: AWS::S3::Bucket
@@ -42,29 +62,58 @@ Resources:
       PolicyDocument:
         Version: 2012-10-17
         Statement:
+          # Allow all services and black list actions
+          # Alternatively, a conservative approach would be to whitelist specific services and whitelist/blacklist actions
           - Effect: Allow
-            Action: '*'
-            Resource: '*'
+            Action: "*"
+            Resource: "*"
+
+          # Prevent the creation of new roles without the permissions boundary (cannot self-reference, so policy name is hard-coded)
+          # Prevent the replacement of the permissions boundary after new roles have been created
           - Effect: Deny
             Action:
-            - iam:CreateUser
+              - iam:CreateRole
+              - iam:PutRolePermissionsBoundary
+            Resource: "*"
+            Condition:
+              "StringNotEquals":
+                "iam:PermissionsBoundary": !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsBoundary
+
+
+          # Prevent the remove of the permissions boundary on any role
+          - Effect: Deny
+            Action:
+              - iam:DeleteRolePermissionsBoundary
+            Resource: "*"
+            Condition:
+              StringEquals:
+                "iam:PermissionsBoundary": !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsBoundary
+
+          # Deny modification of this policy (cannot self-reference, so policy name is hard-coded)
+          - Effect: Deny
+            Action:
+              - iam:CreatePolicy*
+              - iam:DeletePolicy*
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsBoundary
+
+  CloudFormationPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: MainRoleBoundaryPolicy
+    Properties:
+      ManagedPolicyName: CloudFormationPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
             - iam:CreateRole
-            - iam:CreatePolicy
-            - iam:DeleteUser
-            - iam:DeleteRole
-            - iam:DeletePolicy
-            - iam:AttachRolePolicy  
-            - iam:ChangePassword
-            - iam:AttachUserPolicy
-            - iam:AttachGroupPolicy
-            - iam:AddUserToGroup
-            - iam:DeleteAccessKey
-            - iam:PutRolePolicy
-            - iam:PutUserPolicy
-            - iam:UpdateRole
-            - iam:UpdateUser
             Resource: '*'
-  
+            Condition:
+              StringLike:
+                'iam:PermissionsBoundary': 
+                  Ref: MainRoleBoundaryPolicy
+
   CodePipelinePolicy:
     DependsOn: 
       - TutorialArtifactsBucket
@@ -78,6 +127,7 @@ Resources:
           - Effect: Allow
             Action:
             - cloudformation:UpdateStack
+            - cloudformation:SetStackPolicy
             Resource: '*'
           - Effect: Allow
             Action:
@@ -97,23 +147,6 @@ Resources:
                   - 'arn:aws:s3:::'
                   - Ref: ArtifactsBucketParameter
                   - /*
-
-  CloudFormationPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    DependsOn: MainRoleBoundaryPolicy
-    Properties:
-      ManagedPolicyName: CloudFormationPolicy
-      PolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Action:
-            - iam:CreateRole
-            Resource: '*'
-            Condition:
-              StringLike:
-                'iam:PermissionsBoundary': 
-                  Ref: MainRoleBoundaryPolicy
 
   CloudFormationRole:
     DependsOn: CloudFormationPolicy
@@ -345,7 +378,21 @@ Resources:
               StackName: 
                 Ref: AWS::StackName
               TemplatePath: 'kickstart-artifacts::infrastructure/kickstart.yml'
+              #TemplateConfiguration: 'kickstart-artifacts::infrastructure/kickstart-configuration.json'
               ParameterOverrides:
+#                Fn::Sub:
+#                - |
+#                  {
+#                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
+#                    "PersonalAccessTokenParameter" : "${PersonalAccessToken}",
+#                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
+#                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
+#                    "RepositoryNameParameter" : "${RepositoryName}",
+#                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerNameSSM}",
+#                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucketSSM}",
+#                    "RepositoryOwnerSSMParameter" : "${RepositoryOwnerSSM}",
+#                    "RepositoryNameSSMParameter" : "${RepositoryNameSSM}"
+#                  }
                 Fn::Sub:
                 - |
                   {
@@ -365,5 +412,30 @@ Resources:
                     Ref: RepositoryOwnerParameter
                   RepositoryName:
                     Ref: RepositoryNameParameter
+                  #AWSAccountOwnerNameSSM:
+                  #  Ref: AWSAccountOwnerNameStoredParameter
+                  #ArtifactsBucketSSM:
+                  #  Ref: ArtifactsBucketStoredParameter
+                  #RepositoryOwnerSSM:
+                  #  Ref: RepositoryOwnerStoredParameter
+                  #RepositoryNameSSM:
+                  #  Ref: RepositoryNameStoredParameter
             InputArtifacts:
               - Name: kickstart-artifacts
+Outputs:
+  AWSAccountOwnerNameStoredParameterPath:
+    Description: The generated path for AWS Account Owner Name parameter
+    Value:
+      Ref: AWSAccountOwnerNameStoredParameter
+  RepositoryNameStoredParameterPath:
+    Description: The generated path for Repository Name parameter
+    Value:
+      Ref: RepositoryNameStoredParameter
+  RepositoryOwnerStoredParameterPath:
+    Description: The generated path for Repository Owner parameter
+    Value:
+      Ref: RepositoryOwnerStoredParameter
+  ArtifactsBucketStoredParameterPath:
+    Description: The generated path for Artifacts Bucket parameter
+    Value:
+      Ref: ArtifactsBucketStoredParameter
