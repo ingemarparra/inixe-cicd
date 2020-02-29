@@ -26,14 +26,9 @@ Parameters:
     Type: String
     Default: <your-github-repository>
 
-resources:
+Resources:
   RepositoryOwnerStoredParameter:
     Type: AWS::SSM::Parameter
-    Tags:
-      - Key: Environment
-        Value: Global
-      - Key: Project
-        Value: Kickstart-Zero
     Properties:
       Description: The github account name
       Type: String
@@ -51,14 +46,12 @@ resources:
                   - github-owner
       Value:
         Ref: RepositoryOwnerParameter
+      Tags:
+        Environment: Global
+        Project: Kickstart-Zero
 
   RepositoryNameStoredParameter:
     Type: AWS::SSM::Parameter
-    Tags:
-      - Key: Environment
-        Value: Global
-      - Key: Project
-        Value: Kickstart-Zero
     Properties:
       Description: The main github repo name
       Type: String
@@ -75,16 +68,14 @@ resources:
                   - parameter
                   - root-github-repo
       Value:
-          Ref: RepositoryNameParameter
+        Ref: RepositoryNameParameter
+      Tags:
+        Environment: Global
+        Project: Kickstart-Zero
 
   AWSAccountOwnerNameStoredParameter:
     Type: AWS::SSM::Parameter
     Properties:
-      Tags:
-      - Key: Environment
-        Value: Global
-      - Key: Project
-        Value: Kickstart-Zero
       Description: The AWS Account Owner Name
       Type: String
       Name:
@@ -100,15 +91,13 @@ resources:
                   - parameter
                   - aws-owner-name
       Value:
-          Ref: AWSAccountOwnerNameParameter
+        Ref: AWSAccountOwnerNameParameter
+      Tags:
+        Environment: Global
+        Project: Kickstart-Zero
 
   PersonalAccessTokenSecret:
     Type: AWS::SecretsManager::Secret
-    Tags:
-      - Key: Environment
-        Value: Global
-      - Key: Project
-        Value: Kickstart-Zero
     Properties:
       Description: The Github Personal Access Token
       Name: 
@@ -125,6 +114,11 @@ resources:
                   - root-github-token
       SecretString:
         Ref: PersonalAccessTokenNameParameter
+      Tags:
+        - Key: Environment
+          Value: Global
+        - Key: Project
+          Value: Kickstart-Zero
 
   ArtifactsBucketStoredParameter:
     Type: AWS::SSM::Parameter
@@ -145,22 +139,22 @@ resources:
                   - artifact-bucket
       Value:
         Ref: ArtifactsBucketParameter
+      Tags:
+        Environment: Global
+        Project: Kickstart-Zero
 
   IsDeployedStoredParameter:
     Type: AWS::SSM::Parameter
-    Tags:
-      - Key: Environment
-        Value: Global
-      - Key: Project
-        Value: Kickstart-Zero
     Properties:
       Description: A Dummy Resource for Defaulting SSM parameters
       Type: String
       Name: /cloudformation/kickstart
-      Value: yes
+      Value: 'yes'
+      Tags:
+        Environment: Global
+        Project: Kickstart-Zero
 
   ZeroCloudFormationRole:
-    DependsOn: CloudFormationPolicy
     Type: AWS::IAM::Role
     Properties:
       RoleName: ZeroCloudFormationRole
@@ -201,7 +195,6 @@ resources:
                 Resource: '*'
 
   ZeroCodePipelineRole:
-    DependsOn: ZeroCodePipelinePolicy
     Type: AWS::IAM::Role
     Properties:
       RoleName: ZeroCodePipelineRole
@@ -251,20 +244,18 @@ resources:
       BucketName: 
         Ref: ArtifactsBucketParameter
 
-  DevKickstartPipeline:
+  ZeroKickstartPipeline:
     DependsOn:
     - TutorialArtifactsBucket
-    - ZeroCodePipelineRole
-    - ZeroCloudFormationRole
-    - PersonalAccessTokenSecret
-    - ArtifactsBucketStoredParameter
-    - RepositoryOwnerStoredParameter
-    - RepositoryNameStoredParameter
-    - AWSAccountOwnerNameStoredParameter
     - IsDeployedStoredParameter
     Type: AWS::CodePipeline::Pipeline
-    Properties: 
-      ArtifactStore: 
+    Properties:
+      Tags:
+        - Key: Environment
+          Value: Global
+        - Key: Project
+          Value: Kickstart-Zero
+      ArtifactStore:
         Location:
           Ref: ArtifactsBucketParameter
         Type: S3
@@ -304,7 +295,7 @@ resources:
             RunOrder: 1
         - Name: Deploy
           Actions:
-          - Name: Deploy-Kickstart
+          - Name: Deploy-Kickstart-Dev-Pipeline
             RunOrder: 1
             ActionTypeId:
               Category: Deploy
@@ -319,7 +310,10 @@ resources:
                 - ZeroCloudFormationRole
                 - Arn
               StackName: 
-                Ref: AWS::StackName
+                Fn::Sub:
+                  - ${StackName}-dev
+                  - StackName:
+                      Ref: AWS::StackName
               TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
               ParameterOverrides:
                 Fn::Sub:
@@ -329,7 +323,114 @@ resources:
                     "ArtifactsBucketParameter" : "${ArtifactsBucket}",
                     "RepositoryOwnerParameter" : "${RepositoryOwner}",
                     "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
-                    "RepositoryNameParameter" : "${RepositoryName}"
+                    "RepositoryNameParameter" : "${RepositoryName}",
+                    "EnvironmentNameParameter": "dev"
+                  }
+                - AWSAccountOwnerName:
+                    Ref: AWSAccountOwnerNameStoredParameter
+                  ArtifactsBucket:
+                    Ref: ArtifactsBucketStoredParameter
+                  RepositoryOwner:
+                    Ref: RepositoryOwnerStoredParameter
+                  RepositoryName:
+                    Ref: RepositoryNameStoredParameter
+                  PersonalAccessToken:
+                    Fn::Join:
+                    - ''
+                    -
+                      - /
+                      - Fn::Join: 
+                          - '/'
+                          - 
+                            - Ref: AWSAccountOwnerNameParameter
+                            - global
+                            - parameter
+                            - root-github-token
+            InputArtifacts:
+              - Name: kickstart-artifacts
+          - Name: Deploy-Kickstart-Stg-Pipeline
+            RunOrder: 1
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Version: '1'
+              Provider: CloudFormation
+            Configuration:
+              ActionMode: CREATE_UPDATE
+              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+              RoleArn:
+                Fn::GetAtt:
+                - ZeroCloudFormationRole
+                - Arn
+              StackName:
+                Fn::Sub:
+                  - ${StackName}-stg
+                  - StackName:
+                      Ref: AWS::StackName
+              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
+              ParameterOverrides:
+                Fn::Sub:
+                - |
+                  {
+                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
+                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
+                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
+                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
+                    "RepositoryNameParameter" : "${RepositoryName}",
+                    "EnvironmentNameParameter": "stg"
+                  }
+                - AWSAccountOwnerName:
+                    Ref: AWSAccountOwnerNameStoredParameter
+                  ArtifactsBucket:
+                    Ref: ArtifactsBucketStoredParameter
+                  RepositoryOwner:
+                    Ref: RepositoryOwnerStoredParameter
+                  RepositoryName:
+                    Ref: RepositoryNameStoredParameter
+                  PersonalAccessToken:
+                    Fn::Join:
+                    - ''
+                    -
+                      - /
+                      - Fn::Join: 
+                          - '/'
+                          - 
+                            - Ref: AWSAccountOwnerNameParameter
+                            - global
+                            - parameter
+                            - root-github-token
+            InputArtifacts:
+              - Name: kickstart-artifacts
+          - Name: Deploy-Kickstart-Prd-Pipeline
+            RunOrder: 1
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Version: '1'
+              Provider: CloudFormation
+            Configuration:
+              ActionMode: CREATE_UPDATE
+              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+              RoleArn:
+                Fn::GetAtt:
+                - ZeroCloudFormationRole
+                - Arn
+              StackName:
+                Fn::Sub:
+                  - ${StackName}-prd
+                  - StackName:
+                      Ref: AWS::StackName
+              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
+              ParameterOverrides:
+                Fn::Sub:
+                - |
+                  {
+                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
+                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
+                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
+                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
+                    "RepositoryNameParameter" : "${RepositoryName}",
+                    "EnvironmentNameParameter": "prd"
                   }
                 - AWSAccountOwnerName:
                     Ref: AWSAccountOwnerNameStoredParameter

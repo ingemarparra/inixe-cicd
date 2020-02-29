@@ -45,12 +45,6 @@ Mappings:
       Branch: master
 
 Resources:
-  TutorialArtifactsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: 
-        Ref: ArtifactsBucketSSMParameter
-
   # This is a Control Policy that will let all your future roles do anything but create new users
   MainRoleBoundaryPolicy:
     Type: AWS::IAM::ManagedPolicy
@@ -59,6 +53,8 @@ Resources:
         Fn::Sub:
         - |
           Root Boundary policy for ${Env} environment. This will act as a fence on costs and will prevent environment and developers resources mixing
+        - Env:
+            Ref: EnvironmentNameParameter
       ManagedPolicyName:
         Fn::Sub:
           - MainRoleBoundaryPolicy-${Env}
@@ -67,7 +63,8 @@ Resources:
       Path:
         Fn::Sub:
           - /${Env}/boundaries
-          - Ref: EnvironmentNameParameter
+          - Env:
+              Ref: EnvironmentNameParameter
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -108,12 +105,12 @@ Resources:
 
   CloudFormationPolicy:
     Type: AWS::IAM::ManagedPolicy
-    DependsOn: MainRoleBoundaryPolicy
     Properties:
       Path:
         Fn::Sub:
           - /${Env}/boundaries
-          - Ref: EnvironmentNameParameter
+          - Env:
+              Ref: EnvironmentNameParameter
       ManagedPolicyName: 
         Fn::Sub:
           - CloudFormationPolicy-${Env}
@@ -132,15 +129,13 @@ Resources:
                   Ref: MainRoleBoundaryPolicy
 
   CodePipelinePolicy:
-    DependsOn: 
-      - TutorialArtifactsBucket
-      - CloudFormationRole
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Path:
         Fn::Sub:
           - /${Env}/boundaries
-          - Ref: EnvironmentNameParameter
+          - Env:
+              Ref: EnvironmentNameParameter
       ManagedPolicyName: 
         Fn::Sub:
           - CodePipelinePolicy-${Env}
@@ -174,7 +169,6 @@ Resources:
                   - /*
 
   CloudFormationRole:
-    DependsOn: CloudFormationPolicy
     Type: AWS::IAM::Role
     Properties:
       RoleName:
@@ -197,7 +191,6 @@ Resources:
       - Ref: CloudFormationPolicy
 
   CodePipelineRole:
-    DependsOn: CodePipelinePolicy
     Type: AWS::IAM::Role
     Properties:
       RoleName:
@@ -239,18 +232,14 @@ Resources:
       - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
 
   KickstartPipeline:
-    DependsOn:
-    - TutorialArtifactsBucket
-    - CodePipelineRole
-    - CloudFormationRole
     Type: AWS::CodePipeline::Pipeline
-    Tags:
-      - Key: Environment
-        Value:
-          Ref: EnvironmentNameParameter
-      - Key: Project
-        Value: Kickstart
-    Properties: 
+    Properties:
+      Tags:
+        - Key: Environment
+          Value:
+            Ref: EnvironmentNameParameter
+        - Key: Project
+          Value: Kickstart
       ArtifactStore: 
         Location:
           Ref: ArtifactsBucketSSMParameter
