@@ -1,0 +1,348 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A Kickstart Template
+Parameters:
+  PersonalAccessTokenNameParameter:
+    Description: The github personal Access Token
+    Type: String
+    Default: None
+
+  EnvironmentNameParameter:
+    Description: The Stack Environment or Stage
+    Type: String
+    Default: dev
+    AllowedValues: 
+      - dev
+      - stg
+      - prd
+
+  AWSAccountOwnerNameSSMParameter:
+    Description: The github repo name
+    Type: String
+    Default: /cloudformation/kickstart
+
+  ArtifactsBucketSSMParameter:
+    Description: The Cloudformation Bucket for artifacts
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /cloudformation/kickstart
+
+  RepositoryOwnerSSMParameter:
+    Description: The github account
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /cloudformation/kickstart
+
+  RepositoryNameSSMParameter:
+    Description: The github repo name
+    Type: 'AWS::SSM::Parameter::Value<String>'
+    Default: /cloudformation/kickstart
+
+Mappings:
+  GitBranches:
+    dev:
+      Branch: develop
+    stg:
+      Branch: master
+    prd:
+      Branch: master
+
+Resources:
+  TutorialArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 
+        Ref: ArtifactsBucketSSMParameter
+
+  # This is a Control Policy that will let all your future roles do anything but create new users
+  MainRoleBoundaryPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: 
+        Fn::Sub:
+        - |
+          Root Boundary policy for ${Env} environment. This will act as a fence on costs and will prevent environment and developers resources mixing
+      ManagedPolicyName:
+        Fn::Sub:
+          - MainRoleBoundaryPolicy-${Env}
+          - Env:
+              Ref: EnvironmentNameParameter
+      Path:
+        Fn::Sub:
+          - /${Env}/boundaries
+          - Ref: EnvironmentNameParameter
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          # Allow all services and black list actions
+          # Alternatively, a conservative approach would be to whitelist specific services and whitelist/blacklist actions
+          - Effect: Allow
+            Action: "*"
+            Resource: "*"
+
+          # Prevent the creation of new roles without the permissions boundary (cannot self-reference, so policy name is hard-coded)
+          # Prevent the replacement of the permissions boundary after new roles have been created
+          - Effect: Deny
+            Action:
+              - iam:CreateRole
+              - iam:PutRolePermissionsBoundary
+            Resource: "*"
+            Condition:
+              "StringNotEquals":
+                "iam:PermissionsBoundary": !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsBoundary
+
+
+          # Prevent the remove of the permissions boundary on any role
+          - Effect: Deny
+            Action:
+              - iam:DeleteRolePermissionsBoundary
+            Resource: "*"
+            Condition:
+              StringEquals:
+                "iam:PermissionsBoundary": !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsBoundary
+
+          # Deny modification of this policy (cannot self-reference, so policy name is hard-coded)
+          - Effect: Deny
+            Action:
+              - iam:CreatePolicy*
+              - iam:DeletePolicy*
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsBoundary
+
+  CloudFormationPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    DependsOn: MainRoleBoundaryPolicy
+    Properties:
+      Path:
+        Fn::Sub:
+          - /${Env}/boundaries
+          - Ref: EnvironmentNameParameter
+      ManagedPolicyName: 
+        Fn::Sub:
+          - CloudFormationPolicy-${Env}
+          - Env:
+              Ref: EnvironmentNameParameter
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+            - iam:CreateRole
+            Resource: '*'
+            Condition:
+              StringLike:
+                'iam:PermissionsBoundary': 
+                  Ref: MainRoleBoundaryPolicy
+
+  CodePipelinePolicy:
+    DependsOn: 
+      - TutorialArtifactsBucket
+      - CloudFormationRole
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Path:
+        Fn::Sub:
+          - /${Env}/boundaries
+          - Ref: EnvironmentNameParameter
+      ManagedPolicyName: 
+        Fn::Sub:
+          - CodePipelinePolicy-${Env}
+          - Env:
+              Ref: EnvironmentNameParameter
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+            - cloudformation:UpdateStack
+            - cloudformation:SetStackPolicy
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - iam:PassRole
+            Resource:
+              Fn::GetAtt:
+                - CloudFormationRole
+                - Arn
+          - Effect: Allow
+            Action:
+            - s3:PutObject
+            - s3:GetObject
+            Resource:
+              Fn::Join:
+                - ''
+                -
+                  - 'arn:aws:s3:::'
+                  - Ref: ArtifactsBucketSSMParameter
+                  - /*
+
+  CloudFormationRole:
+    DependsOn: CloudFormationPolicy
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub:
+          - CloudFormationRole-${Env}
+          - Env:
+              Ref:EnvironmentNameParameter
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSCloudFormationFullAccess
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      - Ref: CloudFormationPolicy
+
+  CodePipelineRole:
+    DependsOn: CodePipelinePolicy
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub:
+          - CodePipelineRole-${Env}
+          - Env:
+              Ref:EnvironmentNameParameter
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+      - Ref: CodePipelinePolicy
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub:
+          - CodeBuildRole-${Env}
+          - Env:
+              Ref:EnvironmentNameParameter
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+
+  KickstartPipeline:
+    DependsOn:
+    - TutorialArtifactsBucket
+    - CodePipelineRole
+    - CloudFormationRole
+    Type: AWS::CodePipeline::Pipeline
+    Tags:
+      - Key: Environment
+        Value:
+          Ref: EnvironmentNameParameter
+      - Key: Project
+        Value: Kickstart
+    Properties: 
+      ArtifactStore: 
+        Location:
+          Ref: ArtifactsBucketSSMParameter
+        Type: S3
+      Name:
+        Fn::Join:
+          - '-'
+          -
+            - Ref: AWSAccountOwnerNameSSMParameter
+            - kickstart
+            - Ref: EnvironmentNameParameter
+            - pipeline
+      RoleArn:
+        Fn::GetAtt:
+        - CodePipelineRole
+        - Arn
+      Stages: 
+        - Name: Source
+          Actions:
+          - Name: Get-Source
+            ActionTypeId:
+              Category: Source
+              Owner: ThirdParty
+              Version: '1'
+              Provider: GitHub
+            Configuration:
+              Owner:
+                Ref: RepositoryOwnerSSMParameter
+              Repo:
+                Ref: RepositoryNameSSMParameter
+              Branch:
+                Fn::FindInMap:
+                  - GitBranches
+                  - Ref: EnvironmentNameParameter
+                  - Branch
+              OAuthToken:
+                Fn::Join:
+                  - ''
+                  - 
+                    - '{{resolve:secretsmanager:'
+                    - Ref: PersonalAccessTokenNameParameter
+                    - ':SecretString:Token}}'
+              PollForSourceChanges: true
+            OutputArtifacts:
+              - Name: kickstart-artifacts
+            RunOrder: 1
+        - Name: Deploy
+          Actions:
+          - Name: Deploy-Kickstart
+            RunOrder: 1
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Version: '1'
+              Provider: CloudFormation
+            Configuration:
+              ActionMode: CREATE_UPDATE
+              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+              RoleArn:
+                Fn::GetAtt:
+                - CloudFormationRole
+                - Arn
+              StackName:
+                Fn::Sub:
+                  - ${StackName}-${Env}
+                  - StackName:
+                      Ref: AWS::StackName
+                    Env:
+                      Ref: EnvironmentNameParameter
+              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
+              ParameterOverrides:
+                Fn::Sub:
+                - |
+                  {
+                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
+                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerNameSSM}",
+                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucketSSM}",
+                    "RepositoryOwnerSSMParameter" : "${RepositoryOwnerSSM}",
+                    "RepositoryNameSSMParameter" : "${RepositoryNameSSM}",
+                    "EnvironmentNameParameter": "${EnvironmentName}"
+                  }
+                - PersonalAccessToken:
+                    Ref: PersonalAccessTokenNameParameter
+                  AWSAccountOwnerNameSSM:
+                    Ref: AWSAccountOwnerNameSSMParameter
+                  ArtifactsBucketSSM:
+                    Ref: ArtifactsBucketSSMParameter
+                  RepositoryOwnerSSM:
+                    Ref: RepositoryOwnerSSMParameter
+                  RepositoryNameSSM:
+                    Ref: RepositoryNameSSMParameter
+                  EnvironmentName:
+                    Ref: EnvironmentNameParameter
+            InputArtifacts:
+              - Name: kickstart-artifacts

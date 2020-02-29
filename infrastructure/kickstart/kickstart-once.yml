@@ -1,0 +1,355 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A Kickstart Template
+Parameters:
+  AWSAccountOwnerNameParameter:
+    Description: The github repo name
+    Type: String
+    Default: <your-name>
+
+  PersonalAccessTokenNameParameter:
+    Description: The github personal Access Token
+    Type: String
+    Default: None
+
+  ArtifactsBucketParameter:
+    Description: The Cloudformation Bucket for artifacts
+    Type: String
+    Default: <your-name>-cicd-artifacts
+
+  RepositoryOwnerParameter:
+    Description: The github account
+    Type: String
+    Default: <your-github-account>
+
+  RepositoryNameParameter:
+    Description: The github repo name
+    Type: String
+    Default: <your-github-repository>
+
+resources:
+  RepositoryOwnerStoredParameter:
+    Type: AWS::SSM::Parameter
+    Tags:
+      - Key: Environment
+        Value: Global
+      - Key: Project
+        Value: Kickstart-Zero
+    Properties:
+      Description: The github account name
+      Type: String
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - parameter
+                  - github-owner
+      Value:
+        Ref: RepositoryOwnerParameter
+
+  RepositoryNameStoredParameter:
+    Type: AWS::SSM::Parameter
+    Tags:
+      - Key: Environment
+        Value: Global
+      - Key: Project
+        Value: Kickstart-Zero
+    Properties:
+      Description: The main github repo name
+      Type: String
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - parameter
+                  - root-github-repo
+      Value:
+          Ref: RepositoryNameParameter
+
+  AWSAccountOwnerNameStoredParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Tags:
+      - Key: Environment
+        Value: Global
+      - Key: Project
+        Value: Kickstart-Zero
+      Description: The AWS Account Owner Name
+      Type: String
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - parameter
+                  - aws-owner-name
+      Value:
+          Ref: AWSAccountOwnerNameParameter
+
+  PersonalAccessTokenSecret:
+    Type: AWS::SecretsManager::Secret
+    Tags:
+      - Key: Environment
+        Value: Global
+      - Key: Project
+        Value: Kickstart-Zero
+    Properties:
+      Description: The Github Personal Access Token
+      Name: 
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - parameter
+                  - root-github-token
+      SecretString:
+        Ref: PersonalAccessTokenNameParameter
+
+  ArtifactsBucketStoredParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: The Cloudformation Bucket for artifacts
+      Type: String
+      Name:
+        Fn::Join:
+          - ''
+          -
+            - /
+            - Fn::Join: 
+                - '/'
+                - 
+                  - Ref: AWSAccountOwnerNameParameter
+                  - global
+                  - resource
+                  - artifact-bucket
+      Value:
+        Ref: ArtifactsBucketParameter
+
+  IsDeployedStoredParameter:
+    Type: AWS::SSM::Parameter
+    Tags:
+      - Key: Environment
+        Value: Global
+      - Key: Project
+        Value: Kickstart-Zero
+    Properties:
+      Description: A Dummy Resource for Defaulting SSM parameters
+      Type: String
+      Name: /cloudformation/kickstart
+      Value: yes
+
+  ZeroCloudFormationRole:
+    DependsOn: CloudFormationPolicy
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ZeroCloudFormationRole
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - cloudformation.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudFormationZeroPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                - codepipeline:*tePipeline
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                - codepipeline:*agResource
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                - codepipeline:ListTagsForResource
+                - codepipeline:ListPipelines
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - codepipeline:*teWebhook
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - cloudformation:*
+                Resource: '*'
+
+  ZeroCodePipelineRole:
+    DependsOn: ZeroCodePipelinePolicy
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ZeroCodePipelineRole
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: CloudFormationZeroPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                - cloudformation:UpdateStack
+                - cloudformation:SetStackPolicy
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                - iam:PassRole
+                Resource:
+                  Fn::GetAtt:
+                    - ZeroCloudFormationRole
+                    - Arn
+              - Effect: Allow
+                Action:
+                - s3:PutObject
+                - s3:GetObject
+                Resource:
+                  Fn::Join:
+                    - ''
+                    -
+                      - 'arn:aws:s3:::'
+                      - Ref: ArtifactsBucketParameter
+                      - /*
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+
+  TutorialArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: 
+        Ref: ArtifactsBucketParameter
+
+  DevKickstartPipeline:
+    DependsOn:
+    - TutorialArtifactsBucket
+    - ZeroCodePipelineRole
+    - ZeroCloudFormationRole
+    - PersonalAccessTokenSecret
+    - ArtifactsBucketStoredParameter
+    - RepositoryOwnerStoredParameter
+    - RepositoryNameStoredParameter
+    - AWSAccountOwnerNameStoredParameter
+    - IsDeployedStoredParameter
+    Type: AWS::CodePipeline::Pipeline
+    Properties: 
+      ArtifactStore: 
+        Location:
+          Ref: ArtifactsBucketParameter
+        Type: S3
+      Name:
+        Fn::Join:
+          - '-'
+          -
+            - Ref: AWSAccountOwnerNameParameter
+            - kickstart
+            - pipeline
+            - zero
+      RoleArn:
+        Fn::GetAtt:
+        - ZeroCodePipelineRole
+        - Arn
+      # RestartExecutionOnUpdate: true
+      Stages: 
+        - Name: Source
+          Actions:
+          - Name: Get-Source
+            ActionTypeId:
+              Category: Source
+              Owner: ThirdParty
+              Version: '1'
+              Provider: GitHub
+            Configuration:
+              Owner:
+                Ref: RepositoryOwnerParameter
+              Repo:
+                Ref: RepositoryNameParameter
+              Branch: develop
+              OAuthToken:
+                Ref: PersonalAccessTokenNameParameter
+              PollForSourceChanges: true
+            OutputArtifacts:
+              - Name: kickstart-artifacts-zero
+            RunOrder: 1
+        - Name: Deploy
+          Actions:
+          - Name: Deploy-Kickstart
+            RunOrder: 1
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Version: '1'
+              Provider: CloudFormation
+            Configuration:
+              ActionMode: CREATE_UPDATE
+              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+              RoleArn:
+                Fn::GetAtt:
+                - ZeroCloudFormationRole
+                - Arn
+              StackName: 
+                Ref: AWS::StackName
+              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
+              ParameterOverrides:
+                Fn::Sub:
+                - |
+                  {
+                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
+                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
+                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
+                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
+                    "RepositoryNameParameter" : "${RepositoryName}"
+                  }
+                - AWSAccountOwnerName:
+                    Ref: AWSAccountOwnerNameStoredParameter
+                  ArtifactsBucket:
+                    Ref: ArtifactsBucketStoredParameter
+                  RepositoryOwner:
+                    Ref: RepositoryOwnerStoredParameter
+                  RepositoryName:
+                    Ref: RepositoryNameStoredParameter
+                  PersonalAccessToken:
+                    Fn::Join:
+                    - ''
+                    -
+                      - /
+                      - Fn::Join: 
+                          - '/'
+                          - 
+                            - Ref: AWSAccountOwnerNameParameter
+                            - global
+                            - parameter
+                            - root-github-token
+            InputArtifacts:
+              - Name: kickstart-artifacts
