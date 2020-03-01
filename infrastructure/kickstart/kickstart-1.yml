@@ -122,7 +122,7 @@ Resources:
           - /${Env}/
           - Env:
               Ref: EnvironmentNameParameter
-      ManagedPolicyName: CloudFormationPolicy
+      ManagedPolicyName: CodePipelinePolicy
       PolicyDocument:
         Version: 2012-10-17
         Statement:
