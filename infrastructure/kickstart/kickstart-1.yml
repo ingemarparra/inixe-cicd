@@ -49,12 +49,6 @@ Resources:
   MainRoleBoundaryPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      Description: 
-        Fn::Sub:
-        - |
-          Root Boundary policy for ${Env} environment. This will act as a fence on costs and will prevent environment and developers resources mixing
-        - Env:
-            Ref: EnvironmentNameParameter
       ManagedPolicyName:
         Fn::Sub:
           - MainRoleBoundaryPolicy${Env}
