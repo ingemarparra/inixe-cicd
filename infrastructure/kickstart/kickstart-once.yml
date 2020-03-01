@@ -6,10 +6,11 @@ Parameters:
     Type: String
     Default: <your-name>
 
-  PersonalAccessTokenNameParameter:
+  PersonalAccessTokenParameter:
     Description: The github personal Access Token
     Type: String
     Default: None
+    NoEcho: true
 
   ArtifactsBucketParameter:
     Description: The Cloudformation Bucket for artifacts
@@ -113,7 +114,7 @@ Resources:
                   - parameter
                   - root-github-token
       SecretString:
-        Ref: PersonalAccessTokenNameParameter
+        Ref: PersonalAccessTokenParameter
       Tags:
         - Key: Environment
           Value: Global
@@ -157,6 +158,7 @@ Resources:
   ZeroCloudFormationRole:
     Type: AWS::IAM::Role
     Properties:
+      Description: First and Service Only Role for Cloudformation
       RoleName: ZeroCloudFormationRole
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
@@ -168,7 +170,7 @@ Resources:
               - cloudformation.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: CloudFormationZeroPolicy
+        - PolicyName: ZeroCloudFormationZeroPolicy
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -197,6 +199,7 @@ Resources:
   ZeroCodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
+      Description: First and Service Only Role for Code Pipeline
       RoleName: ZeroCodePipelineRole
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
@@ -288,7 +291,7 @@ Resources:
                 Ref: RepositoryNameParameter
               Branch: develop
               OAuthToken:
-                Ref: PersonalAccessTokenNameParameter
+                Ref: PersonalAccessTokenParameter
               PollForSourceChanges: true
             OutputArtifacts:
               - Name: kickstart-artifacts-zero
@@ -314,7 +317,7 @@ Resources:
                   - ${StackName}-dev
                   - StackName:
                       Ref: AWS::StackName
-              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
+              TemplatePath: 'kickstart-artifacts-zero::infrastructure/kickstart/kickstart-1.yml'
               ParameterOverrides:
                 Fn::Sub:
                 - |
@@ -347,7 +350,7 @@ Resources:
                             - parameter
                             - root-github-token
             InputArtifacts:
-              - Name: kickstart-artifacts
+              - Name: kickstart-artifacts-zero
           - Name: Deploy-Kickstart-Stg-Pipeline
             RunOrder: 1
             ActionTypeId:
@@ -400,7 +403,7 @@ Resources:
                             - parameter
                             - root-github-token
             InputArtifacts:
-              - Name: kickstart-artifacts
+              - Name: kickstart-artifacts-zero
           - Name: Deploy-Kickstart-Prd-Pipeline
             RunOrder: 1
             ActionTypeId:
@@ -420,7 +423,7 @@ Resources:
                   - ${StackName}-prd
                   - StackName:
                       Ref: AWS::StackName
-              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
+              TemplatePath: 'kickstart-artifacts-zero::infrastructure/kickstart/kickstart-1.yml'
               ParameterOverrides:
                 Fn::Sub:
                 - |
@@ -453,4 +456,4 @@ Resources:
                             - parameter
                             - root-github-token
             InputArtifacts:
-              - Name: kickstart-artifacts
+              - Name: kickstart-artifacts-zero
