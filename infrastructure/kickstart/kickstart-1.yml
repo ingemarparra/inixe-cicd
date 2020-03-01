@@ -171,11 +171,17 @@ Resources:
   CloudFormationRole:
     Type: AWS::IAM::Role
     Properties:
+      Description:
+        Fn::Sub:
+          - |
+            Default CloudFormation Role for ${Env}
+          - Env:
+              Ref: EnvironmentNameParameter
       RoleName:
         Fn::Sub:
           - CloudFormationRole-${Env}
           - Env:
-              Ref:EnvironmentNameParameter
+              Ref: EnvironmentNameParameter
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -193,11 +199,17 @@ Resources:
   CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
+      Description:
+        Fn::Sub:
+          - |
+            Default CodePipelineRole Role for ${Env}
+          - Env:
+              Ref: EnvironmentNameParameter
       RoleName:
         Fn::Sub:
           - CodePipelineRole-${Env}
           - Env:
-              Ref:EnvironmentNameParameter
+              Ref: EnvironmentNameParameter
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -214,11 +226,17 @@ Resources:
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
+      Description:
+        Fn::Sub:
+          - |
+            Default Role for Codebuild in ${Env}
+          - Env:
+              Ref: EnvironmentNameParameter
       RoleName:
         Fn::Sub:
           - CodeBuildRole-${Env}
           - Env:
-              Ref:EnvironmentNameParameter
+              Ref: EnvironmentNameParameter
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: 2012-10-17

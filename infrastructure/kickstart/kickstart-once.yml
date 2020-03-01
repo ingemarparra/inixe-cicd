@@ -189,11 +189,11 @@ Resources:
                 Resource: '*'
               - Effect: Allow
                 Action:
-                  - codepipeline:*teWebhook
+                - codepipeline:*teWebhook
                 Resource: '*'
               - Effect: Allow
                 Action:
-                  - cloudformation:*
+                - cloudformation:*
                 Resource: '*'
 
   ZeroCodePipelineRole:
@@ -217,7 +217,7 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                - cloudformation:UpdateStack
+                - cloudformation:*teStack
                 - cloudformation:SetStackPolicy
                 Resource: '*'
               - Effect: Allow
