@@ -178,6 +178,8 @@ Resources:
                 Action:
                 - iam:*teRole
                 - iam:Get*
+                - iam:Detach*
+                - iam:*Policy*
                 Resource: '*'
               - Effect: Allow
                 Action:
@@ -186,6 +188,7 @@ Resources:
               - Effect: Allow
                 Action:
                 - codepipeline:*tePipeline
+                - codepipeline:GetPipeline
                 Resource: '*'
               - Effect: Allow
                 Action:
@@ -204,6 +207,7 @@ Resources:
                 Action:
                 - cloudformation:*
                 Resource: '*'
+
 
   ZeroCodePipelineRole:
     Type: AWS::IAM::Role

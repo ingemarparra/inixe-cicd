@@ -263,11 +263,11 @@ Resources:
                 Ref: RepositoryOwnerSSMParameter
               Repo:
                 Ref: RepositoryNameSSMParameter
-              Branch:
-                Fn::FindInMap:
-                  - GitBranches
-                  - Ref: EnvironmentNameParameter
-                  - Branch
+              Branch: develop
+                #Fn::FindInMap:
+                #  - GitBranches
+                #  - Ref: EnvironmentNameParameter
+                #  - Branch
               OAuthToken:
                 Fn::Join:
                   - ''
@@ -297,10 +297,8 @@ Resources:
                 - Arn
               StackName:
                 Fn::Sub:
-                  - ${StackName}-${Env}
-                  - StackName:
-                      Ref: AWS::StackName
-                    Env:
+                  - ${AWS::StackName}-${Env}
+                  - Env:
                       Ref: EnvironmentNameParameter
               TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
               ParameterOverrides:
