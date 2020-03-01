@@ -49,11 +49,7 @@ Resources:
   MainRoleBoundaryPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
-      ManagedPolicyName:
-        Fn::Sub:
-          - MainRoleBoundaryPolicy${Env}
-          - Env:
-              Ref: EnvironmentNameParameter
+      ManagedPolicyName: MainRoleBoundaryPolicy
       Path:
         Fn::Sub:
           - /${Env}/boundaries/
