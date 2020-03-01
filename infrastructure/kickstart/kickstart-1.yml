@@ -17,7 +17,7 @@ Parameters:
 
   AWSAccountOwnerNameSSMParameter:
     Description: The github repo name
-    Type: String
+    Type: 'AWS::SSM::Parameter::Value<String>'
     Default: /cloudformation/kickstart
 
   ArtifactsBucketSSMParameter:
