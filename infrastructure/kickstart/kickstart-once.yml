@@ -176,6 +176,11 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                - iam:*teRole
+                - iam:Get*
+                Resource: '*'
+              - Effect: Allow
+                Action:
                 - ssm:*tParameter*
                 Resource: '*'
               - Effect: Allow
@@ -310,7 +315,7 @@ Resources:
               Version: '1'
               Provider: CloudFormation
             Configuration:
-              ActionMode: CREATE_UPDATE
+              ActionMode: REPLACE_ON_FAILURE 
               Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
               RoleArn:
                 Fn::GetAtt:
@@ -326,11 +331,11 @@ Resources:
                 Fn::Sub:
                 - |
                   {
-                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
-                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
-                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
+                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerName}",
+                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucket}",
+                    "RepositoryOwnerSSMParameter" : "${RepositoryOwner}",
                     "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
-                    "RepositoryNameParameter" : "${RepositoryName}",
+                    "RepositoryNameSSMParameter" : "${RepositoryName}",
                     "EnvironmentNameParameter": "dev"
                   }
                 - AWSAccountOwnerName:
@@ -363,7 +368,7 @@ Resources:
               Version: '1'
               Provider: CloudFormation
             Configuration:
-              ActionMode: CREATE_UPDATE
+              ActionMode: REPLACE_ON_FAILURE 
               Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
               RoleArn:
                 Fn::GetAtt:
@@ -374,16 +379,16 @@ Resources:
                   - ${StackName}-stg
                   - StackName:
                       Ref: AWS::StackName
-              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
+              TemplatePath: 'kickstart-artifacts-zero::infrastructure/kickstart/kickstart-1.yml'
               ParameterOverrides:
                 Fn::Sub:
                 - |
                   {
-                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
-                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
-                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
+                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerName}",
+                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucket}",
+                    "RepositoryOwnerSSMParameter" : "${RepositoryOwner}",
                     "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
-                    "RepositoryNameParameter" : "${RepositoryName}",
+                    "RepositoryNameSSMParameter" : "${RepositoryName}",
                     "EnvironmentNameParameter": "stg"
                   }
                 - AWSAccountOwnerName:
@@ -416,7 +421,7 @@ Resources:
               Version: '1'
               Provider: CloudFormation
             Configuration:
-              ActionMode: CREATE_UPDATE
+              ActionMode: REPLACE_ON_FAILURE 
               Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
               RoleArn:
                 Fn::GetAtt:
@@ -432,11 +437,11 @@ Resources:
                 Fn::Sub:
                 - |
                   {
-                    "AWSAccountOwnerNameParameter" : "${AWSAccountOwnerName}",
-                    "ArtifactsBucketParameter" : "${ArtifactsBucket}",
-                    "RepositoryOwnerParameter" : "${RepositoryOwner}",
+                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerName}",
+                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucket}",
+                    "RepositoryOwnerSSMParameter" : "${RepositoryOwner}",
                     "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
-                    "RepositoryNameParameter" : "${RepositoryName}",
+                    "RepositoryNameSSMParameter" : "${RepositoryName}",
                     "EnvironmentNameParameter": "prd"
                   }
                 - AWSAccountOwnerName:

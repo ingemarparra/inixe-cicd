@@ -57,12 +57,12 @@ Resources:
             Ref: EnvironmentNameParameter
       ManagedPolicyName:
         Fn::Sub:
-          - MainRoleBoundaryPolicy-${Env}
+          - MainRoleBoundaryPolicy${Env}
           - Env:
               Ref: EnvironmentNameParameter
       Path:
         Fn::Sub:
-          - /${Env}/boundaries
+          - /${Env}/boundaries/
           - Env:
               Ref: EnvironmentNameParameter
       PolicyDocument:
@@ -108,12 +108,12 @@ Resources:
     Properties:
       Path:
         Fn::Sub:
-          - /${Env}/boundaries
+          - /${Env}/
           - Env:
               Ref: EnvironmentNameParameter
       ManagedPolicyName: 
         Fn::Sub:
-          - CloudFormationPolicy-${Env}
+          - CloudFormationPolicy${Env}
           - Env:
               Ref: EnvironmentNameParameter
       PolicyDocument:
@@ -133,12 +133,12 @@ Resources:
     Properties:
       Path:
         Fn::Sub:
-          - /${Env}/boundaries
+          - /${Env}/
           - Env:
               Ref: EnvironmentNameParameter
       ManagedPolicyName: 
         Fn::Sub:
-          - CodePipelinePolicy-${Env}
+          - CodePipelinePolicy${Env}
           - Env:
               Ref: EnvironmentNameParameter
       PolicyDocument:
@@ -171,15 +171,9 @@ Resources:
   CloudFormationRole:
     Type: AWS::IAM::Role
     Properties:
-      Description:
-        Fn::Sub:
-          - |
-            Default CloudFormation Role for ${Env}
-          - Env:
-              Ref: EnvironmentNameParameter
       RoleName:
         Fn::Sub:
-          - CloudFormationRole-${Env}
+          - CloudFormationRole${Env}
           - Env:
               Ref: EnvironmentNameParameter
       MaxSessionDuration: 3600
@@ -199,15 +193,9 @@ Resources:
   CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
-      Description:
-        Fn::Sub:
-          - |
-            Default CodePipelineRole Role for ${Env}
-          - Env:
-              Ref: EnvironmentNameParameter
       RoleName:
         Fn::Sub:
-          - CodePipelineRole-${Env}
+          - CodePipelineRole${Env}
           - Env:
               Ref: EnvironmentNameParameter
       MaxSessionDuration: 3600
@@ -226,15 +214,9 @@ Resources:
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
-      Description:
-        Fn::Sub:
-          - |
-            Default Role for Codebuild in ${Env}
-          - Env:
-              Ref: EnvironmentNameParameter
       RoleName:
         Fn::Sub:
-          - CodeBuildRole-${Env}
+          - CodeBuildRole${Env}
           - Env:
               Ref: EnvironmentNameParameter
       MaxSessionDuration: 3600
