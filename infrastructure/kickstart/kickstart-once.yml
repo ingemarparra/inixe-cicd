@@ -176,6 +176,10 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
+                - ssm:*tParameter*
+                Resource: '*'
+              - Effect: Allow
+                Action:
                 - codepipeline:*tePipeline
                 Resource: '*'
               - Effect: Allow
