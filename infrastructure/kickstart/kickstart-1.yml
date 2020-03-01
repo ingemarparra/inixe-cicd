@@ -105,11 +105,7 @@ Resources:
           - /${Env}/
           - Env:
               Ref: EnvironmentNameParameter
-      ManagedPolicyName: 
-        Fn::Sub:
-          - CloudFormationPolicy${Env}
-          - Env:
-              Ref: EnvironmentNameParameter
+      ManagedPolicyName: CloudFormationPolicy
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -130,11 +126,7 @@ Resources:
           - /${Env}/
           - Env:
               Ref: EnvironmentNameParameter
-      ManagedPolicyName: 
-        Fn::Sub:
-          - CodePipelinePolicy${Env}
-          - Env:
-              Ref: EnvironmentNameParameter
+      ManagedPolicyName: CloudFormationPolicy
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -150,26 +142,16 @@ Resources:
               Fn::GetAtt:
                 - CloudFormationRole
                 - Arn
-          - Effect: Allow
-            Action:
-            - s3:PutObject
-            - s3:GetObject
-            Resource:
-              Fn::Join:
-                - ''
-                -
-                  - 'arn:aws:s3:::'
-                  - Ref: ArtifactsBucketSSMParameter
-                  - /*
 
   CloudFormationRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName:
-        Fn::Sub:
-          - CloudFormationRole${Env}
+      Path:
+         Fn::Sub:
+          - /${Env}/
           - Env:
               Ref: EnvironmentNameParameter
+      RoleName: CloudFormationRole
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -187,11 +169,12 @@ Resources:
   CodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName:
-        Fn::Sub:
-          - CodePipelineRole${Env}
+      Path:
+         Fn::Sub:
+          - /${Env}/
           - Env:
               Ref: EnvironmentNameParameter
+      RoleName: CodePipelineRole
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -208,11 +191,12 @@ Resources:
   CodeBuildRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName:
-        Fn::Sub:
-          - CodeBuildRole${Env}
+      Path:
+         Fn::Sub:
+          - /${Env}/
           - Env:
               Ref: EnvironmentNameParameter
+      RoleName: CodeBuildRole
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -228,12 +212,12 @@ Resources:
   KickstartPipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
-      #Tags:
-      #  - Key: Environment
-      #    Value:
-      #      Ref: EnvironmentNameParameter
-      #  - Key: Project
-      #    Value: Kickstart
+      Tags:
+        - Key: Environment
+          Value:
+            Ref: EnvironmentNameParameter
+        - Key: Project
+          Value: Kickstart
       ArtifactStore: 
         Location:
           Ref: ArtifactsBucketSSMParameter

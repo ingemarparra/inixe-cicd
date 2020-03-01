@@ -159,7 +159,11 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       Description: First and Service Only Role for Cloudformation
-      RoleName: ZeroCloudFormationRole
+      RoleName: 
+        Fn::Sub:
+          - ${AccountOwner}CloudFormationZeroRole
+          - AccountOwner:
+              Ref: AWSAccountOwnerNameParameter
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -170,7 +174,11 @@ Resources:
               - cloudformation.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: ZeroCloudFormationZeroPolicy
+        - PolicyName: 
+          Fn::Sub:
+            - ${AccountOwner}CloudFormationZeroPolicy
+            - AccountOwner:
+              Ref: AWSAccountOwnerNameParameter
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -179,17 +187,45 @@ Resources:
                 - iam:*teRole
                 - iam:Get*
                 - iam:Detach*
+                Resource: 
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/dev/CodeBuildRole
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/stg/CodeBuildRole
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/prd/CodeBuildRole
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/dev/CloudFormationRole
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/stg/CloudFormationRole
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/prd/CloudFormationRole
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/dev/CodePipelineRole
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/stg/CodePipelineRole
+                - Fn::Sub: arn:aws:iam::${AWS::AccountId}:role/prd/CodePipelineRole
+              - Effect: Allow
+                Action:
                 - iam:*Policy*
                 Resource: '*'
+                Condition:
+                  ArnLike:
+                    iam:PolicyArn:
+                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/dev/CodePipelinePolicy
+                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/stg/CodePipelinePolicy
+                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/prd/CodePipelinePolicy
+                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/dev/CloudFormationPolicy
+                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/stg/CloudFormationPolicy
+                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/prd/CloudFormationPolicy
               - Effect: Allow
                 Action:
                 - ssm:*tParameter*
                 Resource: '*'
+                Condition:
+                  StringLike:
+                    "ssm:resourceTag/Environment": Global
               - Effect: Allow
                 Action:
                 - codepipeline:*tePipeline
                 - codepipeline:GetPipeline
-                Resource: '*'
+                Resource: 
+                - Fn::Sub:
+                  - arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${AWSAccountOwnerName}-kickstart-*
+                  - AWSAccountOwnerName:
+                      Ref: AWSAccountOwnerNameParameter
               - Effect: Allow
                 Action:
                 - codepipeline:*agResource
@@ -207,7 +243,6 @@ Resources:
                 Action:
                 - cloudformation:*
                 Resource: '*'
-
 
   ZeroCodePipelineRole:
     Type: AWS::IAM::Role
@@ -240,17 +275,6 @@ Resources:
                   Fn::GetAtt:
                     - ZeroCloudFormationRole
                     - Arn
-              - Effect: Allow
-                Action:
-                - s3:PutObject
-                - s3:GetObject
-                Resource:
-                  Fn::Join:
-                    - ''
-                    -
-                      - 'arn:aws:s3:::'
-                      - Ref: ArtifactsBucketParameter
-                      - /*
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
 
@@ -259,6 +283,36 @@ Resources:
     Properties:
       BucketName: 
         Ref: ArtifactsBucketParameter
+      AccessControl: 'Private'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: 'AES256'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  TutorialBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: ArtifactsBucketParameter
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - s3:GetObject
+          - s3:PutObject
+          Resource:
+            Fn::Join:
+              - ''
+              -
+                - 'arn:aws:s3:::'
+                - Ref: ArtifactsBucketParameter
+                - /*
+          Principal: "*"
 
   ZeroKickstartPipeline:
     DependsOn:
@@ -364,109 +418,109 @@ Resources:
                             - root-github-token
             InputArtifacts:
               - Name: kickstart-artifacts-zero
-          - Name: Deploy-Kickstart-Stg-Pipeline
-            RunOrder: 1
-            ActionTypeId:
-              Category: Deploy
-              Owner: AWS
-              Version: '1'
-              Provider: CloudFormation
-            Configuration:
-              ActionMode: REPLACE_ON_FAILURE 
-              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
-              RoleArn:
-                Fn::GetAtt:
-                - ZeroCloudFormationRole
-                - Arn
-              StackName:
-                Fn::Sub:
-                  - ${StackName}-stg
-                  - StackName:
-                      Ref: AWS::StackName
-              TemplatePath: 'kickstart-artifacts-zero::infrastructure/kickstart/kickstart-1.yml'
-              ParameterOverrides:
-                Fn::Sub:
-                - |
-                  {
-                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerName}",
-                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucket}",
-                    "RepositoryOwnerSSMParameter" : "${RepositoryOwner}",
-                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
-                    "RepositoryNameSSMParameter" : "${RepositoryName}",
-                    "EnvironmentNameParameter": "stg"
-                  }
-                - AWSAccountOwnerName:
-                    Ref: AWSAccountOwnerNameStoredParameter
-                  ArtifactsBucket:
-                    Ref: ArtifactsBucketStoredParameter
-                  RepositoryOwner:
-                    Ref: RepositoryOwnerStoredParameter
-                  RepositoryName:
-                    Ref: RepositoryNameStoredParameter
-                  PersonalAccessToken:
-                    Fn::Join:
-                    - ''
-                    -
-                      - /
-                      - Fn::Join: 
-                          - '/'
-                          - 
-                            - Ref: AWSAccountOwnerNameParameter
-                            - global
-                            - parameter
-                            - root-github-token
-            InputArtifacts:
-              - Name: kickstart-artifacts-zero
-          - Name: Deploy-Kickstart-Prd-Pipeline
-            RunOrder: 1
-            ActionTypeId:
-              Category: Deploy
-              Owner: AWS
-              Version: '1'
-              Provider: CloudFormation
-            Configuration:
-              ActionMode: REPLACE_ON_FAILURE 
-              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
-              RoleArn:
-                Fn::GetAtt:
-                - ZeroCloudFormationRole
-                - Arn
-              StackName:
-                Fn::Sub:
-                  - ${StackName}-prd
-                  - StackName:
-                      Ref: AWS::StackName
-              TemplatePath: 'kickstart-artifacts-zero::infrastructure/kickstart/kickstart-1.yml'
-              ParameterOverrides:
-                Fn::Sub:
-                - |
-                  {
-                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerName}",
-                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucket}",
-                    "RepositoryOwnerSSMParameter" : "${RepositoryOwner}",
-                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
-                    "RepositoryNameSSMParameter" : "${RepositoryName}",
-                    "EnvironmentNameParameter": "prd"
-                  }
-                - AWSAccountOwnerName:
-                    Ref: AWSAccountOwnerNameStoredParameter
-                  ArtifactsBucket:
-                    Ref: ArtifactsBucketStoredParameter
-                  RepositoryOwner:
-                    Ref: RepositoryOwnerStoredParameter
-                  RepositoryName:
-                    Ref: RepositoryNameStoredParameter
-                  PersonalAccessToken:
-                    Fn::Join:
-                    - ''
-                    -
-                      - /
-                      - Fn::Join: 
-                          - '/'
-                          - 
-                            - Ref: AWSAccountOwnerNameParameter
-                            - global
-                            - parameter
-                            - root-github-token
-            InputArtifacts:
-              - Name: kickstart-artifacts-zero
+#          - Name: Deploy-Kickstart-Stg-Pipeline
+#            RunOrder: 1
+#            ActionTypeId:
+#              Category: Deploy
+#              Owner: AWS
+#              Version: '1'
+#              Provider: CloudFormation
+#            Configuration:
+#              ActionMode: REPLACE_ON_FAILURE 
+#              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+#              RoleArn:
+#                Fn::GetAtt:
+#                - ZeroCloudFormationRole
+#                - Arn
+#              StackName:
+#                Fn::Sub:
+#                  - ${StackName}-stg
+#                  - StackName:
+#                      Ref: AWS::StackName
+#              TemplatePath: 'kickstart-artifacts-zero::infrastructure/kickstart/kickstart-1.yml'
+#              ParameterOverrides:
+#                Fn::Sub:
+#                - |
+#                  {
+#                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerName}",
+#                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucket}",
+#                    "RepositoryOwnerSSMParameter" : "${RepositoryOwner}",
+#                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
+#                    "RepositoryNameSSMParameter" : "${RepositoryName}",
+#                    "EnvironmentNameParameter": "stg"
+#                  }
+#                - AWSAccountOwnerName:
+#                    Ref: AWSAccountOwnerNameStoredParameter
+#                  ArtifactsBucket:
+#                    Ref: ArtifactsBucketStoredParameter
+#                  RepositoryOwner:
+#                    Ref: RepositoryOwnerStoredParameter
+#                  RepositoryName:
+#                    Ref: RepositoryNameStoredParameter
+#                  PersonalAccessToken:
+#                    Fn::Join:
+#                    - ''
+#                    -
+#                      - /
+#                      - Fn::Join: 
+#                          - '/'
+#                          - 
+#                            - Ref: AWSAccountOwnerNameParameter
+#                            - global
+#                            - parameter
+#                            - root-github-token
+#            InputArtifacts:
+#              - Name: kickstart-artifacts-zero
+#          - Name: Deploy-Kickstart-Prd-Pipeline
+#            RunOrder: 1
+#            ActionTypeId:
+#              Category: Deploy
+#              Owner: AWS
+#              Version: '1'
+#              Provider: CloudFormation
+#            Configuration:
+#              ActionMode: REPLACE_ON_FAILURE 
+#              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+#              RoleArn:
+#                Fn::GetAtt:
+#                - ZeroCloudFormationRole
+#                - Arn
+#              StackName:
+#                Fn::Sub:
+#                  - ${StackName}-prd
+#                  - StackName:
+#                      Ref: AWS::StackName
+#              TemplatePath: 'kickstart-artifacts-zero::infrastructure/kickstart/kickstart-1.yml'
+#              ParameterOverrides:
+#                Fn::Sub:
+#                - |
+#                  {
+#                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerName}",
+#                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucket}",
+#                    "RepositoryOwnerSSMParameter" : "${RepositoryOwner}",
+#                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
+#                    "RepositoryNameSSMParameter" : "${RepositoryName}",
+#                    "EnvironmentNameParameter": "prd"
+#                  }
+#                - AWSAccountOwnerName:
+#                    Ref: AWSAccountOwnerNameStoredParameter
+#                  ArtifactsBucket:
+#                    Ref: ArtifactsBucketStoredParameter
+#                  RepositoryOwner:
+#                    Ref: RepositoryOwnerStoredParameter
+#                  RepositoryName:
+#                    Ref: RepositoryNameStoredParameter
+#                  PersonalAccessToken:
+#                    Fn::Join:
+#                    - ''
+#                    -
+#                      - /
+#                      - Fn::Join: 
+#                          - '/'
+#                          - 
+#                            - Ref: AWSAccountOwnerNameParameter
+#                            - global
+#                            - parameter
+#                            - root-github-token
+#            InputArtifacts:
+#              - Name: kickstart-artifacts-zero
