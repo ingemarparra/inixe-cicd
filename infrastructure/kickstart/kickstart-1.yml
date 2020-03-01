@@ -245,7 +245,6 @@ Resources:
             - Ref: AWSAccountOwnerNameSSMParameter
             - kickstart
             - Ref: EnvironmentNameParameter
-            - pipeline
       RoleArn:
         Fn::GetAtt:
         - CodePipelineRole
