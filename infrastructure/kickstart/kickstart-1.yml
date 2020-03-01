@@ -279,50 +279,50 @@ Resources:
             OutputArtifacts:
               - Name: kickstart-artifacts
             RunOrder: 1
-        - Name: Deploy
-          Actions:
-          - Name: Deploy-Kickstart
-            RunOrder: 1
-            ActionTypeId:
-              Category: Deploy
-              Owner: AWS
-              Version: '1'
-              Provider: CloudFormation
-            Configuration:
-              ActionMode: CREATE_UPDATE
-              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
-              RoleArn:
-                Fn::GetAtt:
-                - CloudFormationRole
-                - Arn
-              StackName:
-                Fn::Sub:
-                  - ${AWS::StackName}-${Env}
-                  - Env:
-                      Ref: EnvironmentNameParameter
-              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
-              ParameterOverrides:
-                Fn::Sub:
-                - |
-                  {
-                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
-                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerNameSSM}",
-                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucketSSM}",
-                    "RepositoryOwnerSSMParameter" : "${RepositoryOwnerSSM}",
-                    "RepositoryNameSSMParameter" : "${RepositoryNameSSM}",
-                    "EnvironmentNameParameter": "${EnvironmentName}"
-                  }
-                - PersonalAccessToken:
-                    Ref: PersonalAccessTokenNameParameter
-                  AWSAccountOwnerNameSSM:
-                    Ref: AWSAccountOwnerNameSSMParameter
-                  ArtifactsBucketSSM:
-                    Ref: ArtifactsBucketSSMParameter
-                  RepositoryOwnerSSM:
-                    Ref: RepositoryOwnerSSMParameter
-                  RepositoryNameSSM:
-                    Ref: RepositoryNameSSMParameter
-                  EnvironmentName:
-                    Ref: EnvironmentNameParameter
-            InputArtifacts:
-              - Name: kickstart-artifacts
+#        - Name: Deploy
+#          Actions:
+#          - Name: Deploy-Kickstart
+#            RunOrder: 1
+#            ActionTypeId:
+#              Category: Deploy
+#              Owner: AWS
+#              Version: '1'
+#              Provider: CloudFormation
+#            Configuration:
+#              ActionMode: CREATE_UPDATE
+#              Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_IAM,CAPABILITY_AUTO_EXPAND
+#              RoleArn:
+#                Fn::GetAtt:
+#                - CloudFormationRole
+#                - Arn
+#              StackName:
+#                Fn::Sub:
+#                  - ${AWS::StackName}-${Env}
+#                  - Env:
+#                      Ref: EnvironmentNameParameter
+#              TemplatePath: 'kickstart-artifacts::infrastructure/kickstart/kickstart-1.yml'
+#              ParameterOverrides:
+#                Fn::Sub:
+#                - |
+#                  {
+#                    "PersonalAccessTokenNameParameter": "${PersonalAccessToken}",
+#                    "AWSAccountOwnerNameSSMParameter" : "${AWSAccountOwnerNameSSM}",
+#                    "ArtifactsBucketSSMParameter" : "${ArtifactsBucketSSM}",
+#                    "RepositoryOwnerSSMParameter" : "${RepositoryOwnerSSM}",
+#                    "RepositoryNameSSMParameter" : "${RepositoryNameSSM}",
+#                    "EnvironmentNameParameter": "${EnvironmentName}"
+#                  }
+#                - PersonalAccessToken:
+#                    Ref: PersonalAccessTokenNameParameter
+#                  AWSAccountOwnerNameSSM:
+#                    Ref: AWSAccountOwnerNameSSMParameter
+#                  ArtifactsBucketSSM:
+#                    Ref: ArtifactsBucketSSMParameter
+#                  RepositoryOwnerSSM:
+#                    Ref: RepositoryOwnerSSMParameter
+#                  RepositoryNameSSM:
+#                    Ref: RepositoryNameSSMParameter
+#                  EnvironmentName:
+#                    Ref: EnvironmentNameParameter
+#            InputArtifacts:
+#              - Name: kickstart-artifacts
