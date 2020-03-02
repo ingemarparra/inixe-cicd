@@ -205,6 +205,17 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
 
+  TutorialArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Sub:
+          - ${BucketName}-${Env}
+          - BucketName:
+              Ref: ArtifactsBucketParameter
+            Env:
+              Ref: EnvironmentNameParameter
+
   KickstartPipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -216,7 +227,12 @@ Resources:
           Value: Kickstart
       ArtifactStore: 
         Location:
-          Ref: ArtifactsBucketSSMParameter
+           Fn::Sub:
+           - ${BucketName}-${Env}
+           - BucketName:
+               Ref: ArtifactsBucketParameter
+             Env:
+               Ref: EnvironmentNameParameter
         Type: S3
       Name:
         Fn::Sub:
