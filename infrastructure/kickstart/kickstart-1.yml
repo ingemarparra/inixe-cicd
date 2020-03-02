@@ -248,13 +248,13 @@ Resources:
                   - GitBranches
                   - Ref: EnvironmentNameParameter
                   - Branch
-              OAuthToken:
-                Fn::Join:
-                  - ''
-                  - 
-                    - '{{resolve:secretsmanager:'
-                    - Ref: PersonalAccessTokenNameParameter
-                    - ':SecretString:Token}}'
+              OAuthToken: abcd123
+                #Fn::Join:
+                #  - ''
+                #  - 
+                #    - '{{resolve:secretsmanager:'
+                #    - Ref: PersonalAccessTokenNameParameter
+                #    - ':SecretString:Token}}'
               PollForSourceChanges: true
             OutputArtifacts:
               - Name: 
