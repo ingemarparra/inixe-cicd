@@ -210,10 +210,8 @@ Resources:
     Properties:
       BucketName:
         Fn::Sub:
-          - ${BucketName}-${Env}
-          - BucketName:
-              Ref: ArtifactsBucketParameter
-            Env:
+          - inixe-pipeline--${Env}
+          - Env:
               Ref: EnvironmentNameParameter
 
   KickstartPipeline:
@@ -228,10 +226,8 @@ Resources:
       ArtifactStore: 
         Location:
            Fn::Sub:
-           - ${BucketName}-${Env}
-           - BucketName:
-               Ref: ArtifactsBucketParameter
-             Env:
+           - inixe-pipeline-${Env}
+           - Env:
                Ref: EnvironmentNameParameter
         Type: S3
       Name:
