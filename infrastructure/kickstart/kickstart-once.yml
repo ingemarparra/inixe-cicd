@@ -175,13 +175,22 @@ Resources:
             Action: sts:AssumeRole
       Policies:
         - PolicyName: 
-          Fn::Sub:
-            - ${AccountOwner}CloudFormationZeroPolicy
-            - AccountOwner:
-              Ref: AWSAccountOwnerNameParameter
+            Fn::Sub:
+              - ${AccountOwner}CloudFormationZeroPolicy
+              - AccountOwner:
+                  Ref: AWSAccountOwnerNameParameter
           PolicyDocument:
             Version: 2012-10-17
             Statement:
+              - Effect: Allow
+                Action:
+                - secretsmanager:GetSecretValue
+                Resource:
+                  Ref: PersonalAccessTokenSecret
+              - Effect: Allow
+                Action:
+                - iam:Get*
+                Resource: '*'
               - Effect: Allow
                 Action:
                 - iam:*teRole
@@ -201,15 +210,23 @@ Resources:
                 Action:
                 - iam:*Policy*
                 Resource: '*'
-                Condition:
-                  ArnLike:
-                    iam:PolicyArn:
-                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/dev/CodePipelinePolicy
-                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/stg/CodePipelinePolicy
-                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/prd/CodePipelinePolicy
-                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/dev/CloudFormationPolicy
-                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/stg/CloudFormationPolicy
-                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/prd/CloudFormationPolicy
+
+#              - Effect: Allow
+#                Action:
+#                - iam:*Policy*
+#                Resource: '*'
+#                Condition:
+#                  ArnLike:
+#                    iam:PolicyArn:
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/dev/CodePipelinePolicy
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/stg/CodePipelinePolicy
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/prd/CodePipelinePolicy
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/dev/CloudFormationPolicy
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/stg/CloudFormationPolicy
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/prd/CloudFormationPolicy
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/dev/boundaries/MainRoleBoundaryPolicy
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/stg/boundaries/MainRoleBoundaryPolicy
+#                      - Fn::Sub: arn:aws:iam::${AWS::AccountId}:policy/prd/boundaries/MainRoleBoundaryPolicy
               - Effect: Allow
                 Action:
                 - ssm:*tParameter*
@@ -221,11 +238,12 @@ Resources:
                 Action:
                 - codepipeline:*tePipeline
                 - codepipeline:GetPipeline
-                Resource: 
-                - Fn::Sub:
-                  - arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${AWSAccountOwnerName}-kickstart-*
-                  - AWSAccountOwnerName:
-                      Ref: AWSAccountOwnerNameParameter
+                - codepipeline:GetPipelineState
+                Resource: '*'
+                # - Fn::Sub:
+                #   - arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${AWSAccountOwnerName}-kickstart-*
+                #   - AWSAccountOwnerName:
+                #       Ref: AWSAccountOwnerNameParameter
               - Effect: Allow
                 Action:
                 - codepipeline:*agResource
@@ -242,13 +260,19 @@ Resources:
               - Effect: Allow
                 Action:
                 - cloudformation:*
+                - iam:PassRole
                 Resource: '*'
+              
 
   ZeroCodePipelineRole:
     Type: AWS::IAM::Role
     Properties:
       Description: First and Service Only Role for Code Pipeline
-      RoleName: ZeroCodePipelineRole
+      RoleName:
+        Fn::Sub:
+          - ${AccountOwner}CodePipelineZeroRole
+          - AccountOwner:
+              Ref: AWSAccountOwnerNameParameter
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: 2012-10-17
@@ -259,7 +283,11 @@ Resources:
               - codepipeline.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: CloudFormationZeroPolicy
+        - PolicyName:
+            Fn::Sub:
+              - ${AccountOwner}CodePipelineZeroPolicy
+              - AccountOwner:
+                  Ref: AWSAccountOwnerNameParameter
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -283,18 +311,19 @@ Resources:
     Properties:
       BucketName: 
         Ref: ArtifactsBucketParameter
-      AccessControl: 'Private'
+#      AccessControl: Private
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
               SSEAlgorithm: 'AES256'
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
+#      PublicAccessBlockConfiguration:
+#        BlockPublicAcls: true
+#        BlockPublicPolicy: true
+#        IgnorePublicAcls: true
+#        RestrictPublicBuckets: true
 
   TutorialBucketPolicy:
+    DependsOn: TutorialArtifactsBucket
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket:

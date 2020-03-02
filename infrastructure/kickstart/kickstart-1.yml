@@ -314,3 +314,13 @@ Resources:
                     - kickstart-artifacts-${Env}
                     - Env:
                         Ref: EnvironmentNameParameter
+
+Outputs:
+  SecretValue:
+    Value:
+    Fn::Join:
+    - ''
+    - 
+      - '{{resolve:secretsmanager:'
+      - Ref: PersonalAccessTokenNameParameter
+      - ':SecretString:Token}}'
