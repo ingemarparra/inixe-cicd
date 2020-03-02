@@ -317,10 +317,10 @@ Resources:
 
 Outputs:
   SecretValue:
-    Value:
-    Fn::Join:
-    - ''
-    - 
-      - '{{resolve:secretsmanager:'
-      - Ref: PersonalAccessTokenNameParameter
-      - ':SecretString:Token}}'
+    Value: '{{resolve:secretsmanager:/inixe/global/parameter/root-github-token:SecretString:Token}}'
+#    Fn::Join:
+#    - ''
+#    - 
+#      - '{{resolve:secretsmanager:'
+#      - Ref: PersonalAccessTokenNameParameter
+#      - ':SecretString:Token}}'
