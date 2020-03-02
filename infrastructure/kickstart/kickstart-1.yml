@@ -205,15 +205,6 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
 
-  TutorialArtifactsBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName:
-        Fn::Sub:
-          - inixe-pipeline--${Env}
-          - Env:
-              Ref: EnvironmentNameParameter
-
   KickstartPipeline:
     Type: AWS::CodePipeline::Pipeline
     Properties:
@@ -224,11 +215,7 @@ Resources:
         - Key: Project
           Value: Kickstart
       ArtifactStore: 
-        Location:
-           Fn::Sub:
-           - inixe-pipeline-${Env}
-           - Env:
-               Ref: EnvironmentNameParameter
+        Location: inixe-cicd-artifacts
         Type: S3
       Name:
         Fn::Sub:
